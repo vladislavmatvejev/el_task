@@ -1,0 +1,10 @@
+1) How would you rate (1-10) the difficulty level of the test (1 = really easy, 10 = impossible)?
+
+2) Was the timit limit (7,5 hours) ok or too strict?
+
+3) Other feedback about the test?
+
+
+1. 8
+2. 7.5 should be fine for this task
+3. Would be better a little less text in description to the task but more strict. Got a little confused. But it might be my own problem since I have read it first quite fast.

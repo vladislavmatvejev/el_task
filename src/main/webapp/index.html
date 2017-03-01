@@ -1,0 +1,164 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Shops</title>
+    <script src="../lib/jquery.js" type="application/javascript"></script>
+    <script src="../lib/bacon.js" type="application/javascript"></script>
+    <script src="../lib/bacon.model.js" type="application/javascript"></script>
+    <script src="../lib/bacon.jquery.js" type="application/javascript"></script>
+    <script src="//builds.handlebarsjs.com.s3.amazonaws.com/handlebars-v2.0.0.js" type="application/javascript"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <style>
+        h1 {
+            margin-top: 25px;
+        }
+        h2 {
+            margin-top: 25px;
+            margin-left: 25px;
+            margin-bottom: 25px;
+        }
+        [class*="col-"] {
+            padding-top: 15px;
+            padding-bottom: 15px;
+            background-color: #eee;
+            background-color: rgba(86,61,124,.15);
+            border: 1px solid rgba(86,61,124,.2);
+        }
+    </style>
+    <script type="text/javascript">
+        Handlebars.registerHelper('productList', function(items, options) {
+            var out = "";
+            for(var i=0, l=items.length; i<l; i++) {
+                out = out + options.fn(items[i]);
+            }
+            return out;
+        });
+
+        var products = Bacon.$.ajax("/api/products");
+        products.onValue(printProducts);
+        
+        
+        
+		function printProducts(products){
+			var productsTemplate = Handlebars.compile($("#product-template").html());
+			//get prices
+			var prices = Bacon.$.ajax("/api/prices");
+	        prices.onValue(function(prices) {
+	        	products.forEach( function(product, key) {
+	        		prices.forEach(function(price) {
+	        			if(product.priceId == price.id) {
+	        				//map prices for products
+							product["oneTimePrice"] = price.oneTimePrice;
+							product["recurringPrice"] = price.recurringPrice;
+							product["recurringCount"] = price.recurringCount;
+							var html = productsTemplate(product);
+							//append product to product list
+							$("#productList").append(html)
+	        			}
+					})
+	        	})
+	        });
+		}
+		function openOrderModal(id){
+			fillModal(id);
+		}
+		function submitOrder(){
+			var data = {product_id : $('#productId').val(), product_name: $('#productName').val(), quantity: $('#quantity').val()}
+			$.ajax({
+				type: 'POST',
+				url : '/api/orders',
+				data : data,
+				success : function(result){
+					console.log('sent!');
+					$('#myModal').modal('hide');
+				},
+				error : function(request, status, error){
+					console.log(request.responseText);
+				}
+			});
+		}
+		function fillModal(prodId){
+			$('#quantity').val(1);
+			$('#prodPrice').text($('#price-'+escChars(prodId)).text());
+			$('#productId').val(prodId);
+			$('#productName').val($('#prodName-'+escChars(prodId)).text());
+			$('#productDesc').text($('#prodDesc-'+escChars(prodId)).text());
+			//add maximum value for the quantity box
+			$('#quantity').attr('max', $('#recCount-'+escChars(prodId)).text());
+			//if more than 1 item is ordered then show recurring price.
+			//else if only 1 item is ordered then show one time price
+			$('#quantity').on('change', function(){
+				if($('#quantity').val() != 1){
+					$('#prodPrice').text($('#recPrice-'+escChars(prodId)).text() * $('#quantity').val());
+				}else{
+					$('#prodPrice').text($('#price-'+escChars(prodId)).text());
+				}
+			})
+		}
+		//escape for special characters in css selectors (id=f3DFS234\\#212dfS)
+		function escChars(id) {
+		    return id.replace(/[!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]/g, "\\$&");
+		}
+    </script>
+    <script id="product-template" type="text/x-handlebars-template">
+        <div class="productRow" id="product-id-{{id}}">
+			<div class="col-md-10"><label>ProductId:</label> <h5 id="prodId-{{id}}">{{id}}</h5> <label>Product Name:</label> <h5 id="prodName-{{id}}">{{name}}</h5> <label>Description:</label> <h5 id="prodDesc-{{id}}">{{description}}</h5></div>
+			<div class="col-md-10 priceRow">
+				<div class="col-md-3"><label>Price </label><p id="price-{{id}}">{{oneTimePrice}}</p></div>
+				<div class="col-md-3"><label>Recurring Price </label><p id="recPrice-{{id}}">{{recurringPrice}}</p></div>
+				<div class="col-md-3"><label>Recurring Count </label><p id="recCount-{{id}}">{{recurringCount}}</p></div>
+				<div class="col-md-3 text-center"><label>Make an order </label><p><a href="#" onclick="openOrderModal('{{id}}')" data-toggle="modal" data-target="#myModal">Order</a></p></div>
+			</div>
+        </div>
+		<div class="col-md-10" style="background-color: #ffffff"></div>
+    </script>
+</head>
+<body>
+    <div class="container" id="productList">
+    	<h1>Ordering tool</h1>
+    	<h2>Product list</h2>
+	</div>
+	
+	<div class="modal fade" id="myModal" tabindex="-1" role="dialog">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<form id="formOrder">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+						<h4 class="modal-title">Make order</h4>
+					</div>
+					<div class="modal-body">
+							<div class="form-group">
+								<label for="productId">ProductId</label>
+								<input type="text" class="form-control" id="productId" name="productId" disabled>
+							</div>
+							<div class="form-group">
+								<label for="productName">Product name</label>
+								<input type="text" class="form-control" id="productName" name="name" disabled>
+							</div>
+							<div class="form-group">
+								<label for="productDesc">Description</label>
+								<p id="productDesc">Monster camera version of the famous Windows Phone.</p>
+							</div>
+							<div class="form-group">
+								<label for="quantity">Quantity</label>
+								<input type="number" class="form-control" min="1" id="quantity" name="quantity">
+							</div>
+							<div>
+								<label for="price">Price</label>
+								<h4 id="prodPrice">50</h4>
+							</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-primary" onclick="submitOrder()">Save</button>
+					</div>
+				</form>
+			</div><!-- /.modal-content -->
+		</div><!-- /.modal-dialog -->
+	</div><!-- /.modal -->
+	
+</body>
+</html>
